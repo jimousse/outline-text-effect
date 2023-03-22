@@ -1,14 +1,34 @@
 import './style.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import * as dat from 'lil-gui';
 import { addLights } from './lights';
+import { particlesGeometry } from './particles';
 import { createTextGeometry } from 'three-bmfont-text-es';
-import gradientTexture from '../public/font/gradient.png';
-import fragmentShader from '../shaders/fragment.glsl';
-import vertexShader from '../shaders/vertex.glsl';
+import fragmentShader from '../shaders/font/fragment.glsl';
+import vertexShader from '../shaders/font/vertex.glsl';
+import fragmentParticlesShader from '../shaders/particles//fragment.glsl';
+import vertexParticlesShader from '../shaders/particles/vertex.glsl';
 
-import font from '../public/font/manifold.json';
+import robotoFont from '../public/font/Roboto-Medium-msdf.json';
+const robotoFontImg = './font/Roboto-Medium.png';
+
+import manifoldFont from '../public/font/manifold.json';
+const manifoldFontImg = './font/manifold.png';
+
+import kalamFont from '../public/font/Kalam-Regular-msdf.json';
+const kalamFontImg = './font/Kalam-Regular.png';
+
+import crimsonFont from '../public/font/CrimsonText-Regular-msdf.json';
+const crimsonFontImg = './font/CrimsonText-Regular.png';
+
+const currentFont = crimsonFont;
+const currentFontImg = crimsonFontImg;
+
+// const currentFont = robotoFont;
+// const currentFontImg = robotoFontImg;
+
+// const currentFont = kalamFont;
+// const currentFontImg = kalamFontImg;
 
 const sizes = {
   width: window.innerWidth,
@@ -19,28 +39,24 @@ let textMaterial;
 let textGeometry;
 let textTexture;
 
-new THREE.TextureLoader().load('./font/manifold.png', (texture) => {
+new THREE.TextureLoader().load(currentFontImg, (texture) => {
   textTexture = texture;
 
   textGeometry = createTextGeometry({
-    text: 'HELLO',
-    font: font,
+    text: 'Three.js',
+    font: currentFont,
     align: 'center',
     flipY: texture.flipY,
   });
 
   textMaterial = new THREE.ShaderMaterial({
     uniforms: {
-      opacity: { value: 1 },
       time: {
         value: 0,
       },
       uMouse: { value: new THREE.Vector2(0, 0) },
       viewport: {
         value: new THREE.Vector2(sizes.width, sizes.height),
-      },
-      gradientMap: {
-        value: new THREE.TextureLoader().load(gradientTexture),
       },
       color: {
         value: new THREE.Color(0xffffff),
@@ -56,30 +72,37 @@ new THREE.TextureLoader().load('./font/manifold.png', (texture) => {
   });
 
   const text = new THREE.Mesh(textGeometry, textMaterial);
-  text.position.set(-1, 0, 0);
   text.scale.multiplyScalar(0.02);
-  const textAnchor = new THREE.Object3D();
-  textAnchor.add(text);
-  textAnchor.rotation.z = Math.PI;
-  scene.add(textAnchor);
+  text.rotation.z = Math.PI;
+  text.position.x = 1.3;
+  text.position.y = -0.4;
+  scene.add(text);
 });
-
-// Debug
-const gui = new dat.GUI();
-gui.hide();
-if (window.location.hash === '#debug') {
-  gui.show();
-}
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl');
 
 // Scene
 const scene = new THREE.Scene();
-const axesHelper = new THREE.AxesHelper();
-scene.add(axesHelper);
 
 addLights(scene);
+
+// particles
+const particlesMaterial = new THREE.ShaderMaterial({
+  transparent: true,
+  depthWrite: false,
+  vertexShader: vertexParticlesShader,
+  fragmentShader: fragmentParticlesShader,
+  uniforms: {
+    time: { value: 0 },
+    uMouse: { value: new THREE.Vector2() },
+    viewport: {
+      value: new THREE.Vector2(sizes.width, sizes.height),
+    },
+  },
+});
+const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+scene.add(particles);
 
 const mouseCoordinates = {};
 
@@ -92,6 +115,10 @@ window.addEventListener('mousemove', (e) => {
       mouseCoordinates.y
     );
   }
+  particlesMaterial.uniforms.uMouse.value = new THREE.Vector2(
+    mouseCoordinates.x,
+    mouseCoordinates.y
+  );
 });
 
 window.addEventListener('resize', () => {
@@ -105,11 +132,14 @@ window.addEventListener('resize', () => {
       sizes.height
     );
   }
+  particlesMaterial.uniforms.viewport.value = new THREE.Vector2(
+    sizes.width,
+    sizes.height
+  );
 
   // Update camera
   camera.aspect = sizes.width / sizes.height;
   camera.updateProjectionMatrix();
-  console.log(window.devicePixelRatio);
   // Update renderer
   renderer.setSize(sizes.width, sizes.height);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -127,7 +157,7 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.x = 0;
 camera.position.y = 0;
-camera.position.z = -4;
+camera.position.z = -2;
 scene.add(camera);
 
 // Controls
@@ -153,6 +183,7 @@ const clock = new THREE.Clock();
 const tick = () => {
   const elapsedTime = clock.getElapsedTime();
   if (textMaterial) textMaterial.uniforms.time.value = elapsedTime;
+  particlesMaterial.uniforms.time.value = elapsedTime;
   // Update controls
   controls.update();
 
